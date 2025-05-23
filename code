@@ -1,0 +1,127 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define MAX_NAME 100
+
+typedef enum { FILE_NODE, FOLDER_NODE } NodeType;
+
+typedef struct TreeNode {
+    char name[MAX_NAME];
+    NodeType type;
+    struct TreeNode* child;
+    struct TreeNode* sibling;
+} TreeNode;
+
+// Tạo node mới
+TreeNode* createNode(const char* name, NodeType type) {
+    TreeNode* node = (TreeNode*)malloc(sizeof(TreeNode));
+    if (!node) {
+        printf("Lỗi cấp phát bộ nhớ.\n");
+        exit(1);
+    }
+    strcpy(node->name, name);
+    node->type = type;
+    node->child = NULL;
+    node->sibling = NULL;
+    return node;
+}
+
+// Thêm node con vào thư mục
+void addChild(TreeNode* parent, TreeNode* child) {
+    if (parent->type != FOLDER_NODE) {
+        printf("❌ Không thể thêm vào file.\n");
+        return;
+    }
+    if (!parent->child) {
+        parent->child = child;
+    } else {
+        TreeNode* temp = parent->child;
+        while (temp->sibling) temp = temp->sibling;
+        temp->sibling = child;
+    }
+}
+
+// Xóa một node con theo tên
+int deleteNode(TreeNode* parent, const char* name) {
+    if (!parent || !parent->child) return 0;
+
+    TreeNode* current = parent->child;
+    TreeNode* prev = NULL;
+
+    while (current) {
+        if (strcmp(current->name, name) == 0) {
+            if (prev)
+                prev->sibling = current->sibling;
+            else
+                parent->child = current->sibling;
+
+            // Xóa đệ quy các con
+            while (current->child) {
+                deleteNode(current, current->child->name);
+            }
+            free(current);
+            return 1;
+        }
+        prev = current;
+        current = current->sibling;
+    }
+    return 0;
+}
+
+// Hiển thị cây thư mục (tree hoặc list)
+void printTree(TreeNode* root, int level, int isList) {
+    if (!root) return;
+    for (int i = 0; i < level; i++) printf(isList ? "  " : "|  ");
+    printf(isList ? "- %s (%s)\n" : "|-- %s [%s]\n",
+           root->name,
+           root->type == FOLDER_NODE ? "Folder" : "File");
+
+    TreeNode* child = root->child;
+    while (child) {
+        printTree(child, level + 1, isList);
+        child = child->sibling;
+    }
+}
+
+// Duyệt DFS
+void dfs(TreeNode* node) {
+    if (!node) return;
+    printf("%s (%s)\n", node->name,
+           node->type == FOLDER_NODE ? "Folder" : "File");
+
+    dfs(node->child);
+    dfs(node->sibling);
+}
+
+// Hàm chính demo
+int main() {
+    TreeNode* root = createNode("root", FOLDER_NODE);
+
+    TreeNode* docs = createNode("Documents", FOLDER_NODE);
+    TreeNode* img = createNode("Images", FOLDER_NODE);
+    TreeNode* file1 = createNode("notes.txt", FILE_NODE);
+    TreeNode* file2 = createNode("img1.jpg", FILE_NODE);
+
+    addChild(root, docs);
+    addChild(root, img);
+    addChild(docs, file1);
+    addChild(img, file2);
+
+    printf("📂 Tree Structure:\n");
+    printTree(root, 0, 0); // Tree format
+
+    printf("\n🗒️ List Structure:\n");
+    printTree(root, 0, 1); // List format
+
+    printf("\n🔍 DFS Traversal:\n");
+    dfs(root);
+
+    printf("\n❌ Xoá file 'notes.txt'...\n");
+    deleteNode(docs, "notes.txt");
+
+    printf("\n📂 Tree sau khi xoá:\n");
+    printTree(root, 0, 0);
+
+    return 0;
+}
